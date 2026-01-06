@@ -96,12 +96,39 @@ jobs:
               echo "UFW not found, skipping firewall configuration."
             fi
 
-            # 6. Start Application with Docker Compose
-            echo "Starting Docker services..."
-            # Stop existing containers to ensure clean restart (optional, remove if downtime is an issue)
-            docker compose down --remove-orphans
+            # 6. Start Application with Docker Compose (Hard Reset Strategy)
+            echo "Starting Docker services with HARD RESET..."
             
-            # Start up in detached mode
-            docker compose up -d --build
+            # Force stop everything first to clear stuck states
+            docker compose down --remove-orphans || true
+            
+            # Prune old images to save space and avoid conflicts
+            docker system prune -f
+            
+            # Pull latest images just in case
+            docker compose pull
+            
+            # Start up in detached mode with build to ensure fresh code
+            # We use "up -d" to start everything. The healthchecks in compose file handles dependency order.
+            docker compose up -d --build --force-recreate
+
+            echo "Waiting 30 seconds for services to stabilize..."
+            sleep 30
+            
+            echo "Checking status..."
+            docker ps -a
+            
+            # Simple check if critical containers are running
+            if ! docker ps | grep -q "frontend"; then
+                echo "ERROR: Frontend container is not running! Printing logs:"
+                docker compose logs frontend
+                exit 1
+            fi
+            
+            if ! docker ps | grep -q "rest_server"; then
+                echo "ERROR: Backend container is not running! Printing logs:"
+                docker compose logs rest_server
+                exit 1
+            fi
 
             echo "Deployment finished successfully!"
