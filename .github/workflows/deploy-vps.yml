@@ -79,7 +79,24 @@ jobs:
             sed -i "s|NEXT_PUBLIC_SUPABASE_URL=.*|NEXT_PUBLIC_SUPABASE_URL=http://$SERVER_IP:8000|" frontend/.env
 
 
-            # 5. Start Application with Docker Compose
+            # 5. Configure Firewall (UFW)
+            echo "Configuring Firewall..."
+            if command -v ufw > /dev/null; then
+              ufw allow $APP_PORT/tcp
+              ufw allow $API_PORT/tcp
+              # Ensure standard ports are also open so we don't lock ourselves out
+              ufw allow 22/tcp
+              ufw allow 80/tcp
+              ufw allow 443/tcp
+              # Enable firewall if not already active (non-interactive)
+              # echo "y" | ufw enable
+              ufw reload
+              echo "Firewall rules updated."
+            else
+              echo "UFW not found, skipping firewall configuration."
+            fi
+
+            # 6. Start Application with Docker Compose
             echo "Starting Docker services..."
             # Stop existing containers to ensure clean restart (optional, remove if downtime is an issue)
             docker compose down --remove-orphans
