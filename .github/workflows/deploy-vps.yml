@@ -88,6 +88,8 @@ jobs:
             if command -v ufw > /dev/null; then
               ufw allow $APP_PORT/tcp
               ufw allow $API_PORT/tcp
+              ufw allow $KONG_HTTP_PORT/tcp
+              ufw allow $KONG_HTTPS_PORT/tcp
               # Ensure standard ports are also open so we don't lock ourselves out
               ufw allow 22/tcp
               ufw allow 80/tcp
